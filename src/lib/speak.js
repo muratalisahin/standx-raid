@@ -1,42 +1,43 @@
-let unlocked = false;
+import { detectLang, langById } from "./i18n.js";
 
-function pickVoice() {
+function pickVoice(locale) {
   const voices = window.speechSynthesis?.getVoices?.() || [];
+  if (!voices.length) return null;
+  const loc = locale.toLowerCase();
+  const prefix = loc.slice(0, 2);
   return (
-    voices.find((v) => /en-US/i.test(v.lang) && /google|samantha|zira|jenny|aria/i.test(v.name)) ||
+    voices.find((v) => v.lang.toLowerCase().replace("_", "-") === loc) ||
+    voices.find((v) => v.lang.toLowerCase().startsWith(prefix)) ||
     voices.find((v) => /en/i.test(v.lang)) ||
     null
   );
 }
 
-export function speakHello() {
-  const text = "Hello, welcome";
+export function speakHello(langId = detectLang()) {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
-  try {
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-US";
-    u.rate = 0.92;
-    u.pitch = 1.12;
-    u.volume = 1;
-    const voice = pickVoice();
-    if (voice) u.voice = voice;
-    window.speechSynthesis.speak(u);
-  } catch {
-    /* ignore */
+  const lang = langById(langId);
+  const go = () => {
+    try {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.resume?.();
+      const u = new SpeechSynthesisUtterance(lang.hello);
+      u.lang = lang.locale;
+      u.rate = 0.92;
+      u.pitch = 1.08;
+      u.volume = 1;
+      const voice = pickVoice(lang.locale);
+      if (voice) u.voice = voice;
+      window.speechSynthesis.speak(u);
+    } catch {
+      /* ignore */
+    }
+  };
+  go();
+  if (!window.speechSynthesis.getVoices().length) {
+    window.speechSynthesis.addEventListener("voiceschanged", go, { once: true });
   }
 }
 
-export function unlockSpeech() {
-  if (unlocked) {
-    speakHello();
-    return;
-  }
-  unlocked = true;
-  if (window.speechSynthesis?.getVoices().length) {
-    speakHello();
-    return;
-  }
-  window.speechSynthesis?.addEventListener?.("voiceschanged", speakHello, { once: true });
-  speakHello();
+export function unlockSpeech(langId = detectLang()) {
+  speakHello(langId);
 }

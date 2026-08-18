@@ -1,22 +1,31 @@
 import React, { useEffect, useState } from "react";
 import Stander, { MARK } from "./Stander.jsx";
+import LangBar from "./LangBar.jsx";
 import { enterX, savedXName } from "../lib/session.js";
-import { speakHello, unlockSpeech } from "../lib/speak.js";
+import { langById } from "../lib/i18n.js";
+import { useLang } from "../lib/Lang.jsx";
+import { speakHello } from "../lib/speak.js";
 
 export default function Auth({ onIn }) {
+  const { lang, t } = useLang();
   const [name, setName] = useState(() => savedXName());
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const hello = langById(lang).hello;
 
   useEffect(() => {
-    const kick = () => unlockSpeech();
-    window.addEventListener("pointerdown", kick, { once: true });
-    window.addEventListener("keydown", kick, { once: true });
-    const id = window.setTimeout(speakHello, 400);
+    const speak = () => speakHello(lang);
+    speak();
+    const t1 = window.setTimeout(speak, 250);
+    const t2 = window.setTimeout(speak, 900);
+    const once = () => speakHello(lang);
+    window.addEventListener("pointerdown", once, { once: true });
+    window.speechSynthesis?.addEventListener?.("voiceschanged", speak);
     return () => {
-      window.clearTimeout(id);
-      window.removeEventListener("pointerdown", kick);
-      window.removeEventListener("keydown", kick);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.removeEventListener("pointerdown", once);
+      window.speechSynthesis?.removeEventListener?.("voiceschanged", speak);
     };
   }, []);
 
@@ -24,7 +33,7 @@ export default function Auth({ onIn }) {
     e.preventDefault();
     setErr("");
     setBusy(true);
-    speakHello();
+    speakHello(lang);
     try {
       const user = await enterX(name);
       onIn(user);
@@ -36,24 +45,26 @@ export default function Auth({ onIn }) {
   }
 
   return (
-    <div className="authShell" onPointerDown={unlockSpeech}>
+    <div className="authShell">
       <div className="authCard">
         <div className="helloStage">
           <Stander pose="front" className="authMascot" />
           <p className="helloBubble" aria-live="polite">
-            Hello, welcome
+            {hello}
           </p>
         </div>
+        <p className="langLabel">{t.lang}</p>
+        <LangBar full />
         <div className="authBrand">
           <img className="authLogo" src={MARK} alt="StandX" />
           <span>STANDX RAID</span>
         </div>
-        <h1>Sign in</h1>
-        <p className="authAsk">Enter your X username.</p>
-        <p>The browser saves this person. Next visit opens the same account.</p>
+        <h1>{t.signIn}</h1>
+        <p className="authAsk">{t.ask}</p>
+        <p>{t.save}</p>
         <form onSubmit={submit}>
           <label>
-            X username
+            {t.user}
             <input
               value={name}
               onChange={(e) => setName(e.target.value.replace(/^@/, ""))}
@@ -67,7 +78,7 @@ export default function Auth({ onIn }) {
           </label>
           {err && <p className="authErr">{err}</p>}
           <button type="submit" className="hudPlay" disabled={busy}>
-            {busy ? "…" : "ENTER AND SAVE"}
+            {busy ? "…" : t.enter}
           </button>
         </form>
       </div>

@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Stander from "./Stander.jsx";
 import { fetchBoard } from "../lib/session.js";
+import { useLang } from "../lib/Lang.jsx";
 
 export default function Leaderboard({ user, gameScore = 0, playing = false }) {
+  const { t } = useLang();
   const [board, setBoard] = useState({ top: [], users: 0 });
   const [fail, setFail] = useState("");
 
@@ -25,7 +27,7 @@ export default function Leaderboard({ user, gameScore = 0, playing = false }) {
           setFail("");
         }
       } catch {
-        if (!stop) setFail("Leaderboard did not load from the server.");
+        if (!stop) setFail("fail");
       }
     };
     pull();
@@ -41,24 +43,24 @@ export default function Leaderboard({ user, gameScore = 0, playing = false }) {
   return (
     <section className="board">
       <div className="boardHead">
-        <strong>LEADERBOARD</strong>
+        <strong>{t.board}</strong>
         <span>
           @{user?.name || "—"}
-          {playing ? ` · ${gameScore} pts` : ""}
+          {playing ? ` · ${gameScore} ${t.pts}` : ""}
           {" · "}
-          {Math.max(board.users, players.length)} players
+          {Math.max(board.users, players.length)} {t.players}
         </span>
       </div>
-      {fail && <p className="boardYou authErr">{fail}</p>}
+      {fail && <p className="boardYou authErr">{t.boardFail}</p>}
       <div className="boardBody">
       <ol className="boardList">
-        {players.length === 0 && <li className="empty">No players yet.</li>}
+        {players.length === 0 && <li className="empty">{t.emptyBoard}</li>}
         {players.map((r) => (
           <li key={`${r.rank}-${r.name}`}>
             <div className={`run ${r.name === user?.name ? "on" : ""}`}>
               <em>{r.rank}</em>
               <b>@{r.name}</b>
-              <strong>{r.score} pts</strong>
+              <strong>{r.score} {t.pts}</strong>
             </div>
           </li>
         ))}

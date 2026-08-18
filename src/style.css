@@ -93,6 +93,19 @@ header.topHud {
   background: var(--green);
   font-weight: 700;
 }
+.hudLang {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.hudLang.langRow {
+  margin-bottom: 0;
+}
+.hudLang button {
+  flex: 1;
+  min-height: 36px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
 
 .live {
   font-family: "IBM Plex Mono", monospace;
@@ -930,14 +943,45 @@ dd { margin: 0; font-family: "IBM Plex Mono", monospace; font-size: 12px; }
 }
 .helloBubble {
   display: inline-block;
-  margin: 8px auto 0;
+  margin: 0 auto;
   padding: 8px 14px;
   border: 1px solid var(--green);
   background: #102018;
   color: #8cffb0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   animation: helloPop 0.45s ease;
+}
+.langLabel {
+  margin: 8px 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.langRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.langRow button {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 40px;
+  padding: 6px 10px;
+  flex: 1 1 76px;
+  border: 1px solid var(--line);
+  background: #0a0f0c;
+  color: var(--ink);
+  cursor: pointer;
+}
+.langRow button.on {
+  border-color: var(--green);
+  background: var(--green);
+  color: #071109;
 }
 @keyframes helloPop {
   from { transform: translateY(8px) scale(0.92); opacity: 0; }

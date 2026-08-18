@@ -8,13 +8,17 @@ import Leaderboard from "./components/Leaderboard.jsx";
 import Auth from "./components/Auth.jsx";
 import Raid from "./components/Raid.jsx";
 import Stander, { LOGO } from "./components/Stander.jsx";
+import LangBar from "./components/LangBar.jsx";
 import { logout, restoreSession, getUser } from "./lib/session.js";
 import { speakHello } from "./lib/speak.js";
+import { langById } from "./lib/i18n.js";
+import { useLang } from "./lib/Lang.jsx";
 import { depthUrl, fetchJson, klineUrl, marketUrl, parseDepth, parseKlines } from "./lib/api.js";
 import { layoutCircuit } from "./lib/circuitLayout.js";
 import { bps, funding, money, pct, px } from "./lib/format.js";
 
 export default function App() {
+  const { lang, t } = useLang();
   const stageRef = useRef(null);
   const shotRef = useRef(null);
   const prevMark = useRef({});
@@ -52,7 +56,7 @@ export default function App() {
         setUser(u);
         if (u && !fromAuth.current) {
           setHello(true);
-          speakHello();
+          speakHello(lang);
           window.setTimeout(() => setHello(false), 3200);
         }
       })
@@ -210,7 +214,7 @@ export default function App() {
   if (!authReady) {
     return (
       <div className="authShell">
-        <span>Checking session…</span>
+        <span>{t.checking}</span>
       </div>
     );
   }
@@ -231,7 +235,7 @@ export default function App() {
       {hello && (
         <div className="helloGate" aria-live="polite">
           <Stander cycle className="helloGateMascot" />
-          <p>Hello, welcome</p>
+          <p>{langById(lang).hello}</p>
         </div>
       )}
       <header className="topHud">
@@ -241,7 +245,7 @@ export default function App() {
         </div>
         <div className="live">
           <i />
-          LIVE · {clock.toLocaleTimeString()} · {age == null ? "SYNC" : age === 0 ? "NOW" : `${age}s`}
+          {t.live} · {clock.toLocaleTimeString()} · {age == null ? t.sync : age === 0 ? t.now : `${age}s`}
         </div>
         <div className="userBar">
           <b>{user.name}</b>
@@ -254,15 +258,16 @@ export default function App() {
               });
             }}
           >
-            Sign out
+            {t.signOut}
           </button>
         </div>
+        <LangBar />
         <div className="modeSwitch" role="tablist" aria-label="Mode">
           <button type="button" className={mode === "watch" ? "on" : ""} onClick={() => { setMode("watch"); setRaidOn(false); }}>
-            WATCH
+            {t.watch}
           </button>
           <button type="button" className={mode === "raid" ? "on" : ""} onClick={() => setMode("raid")}>
-            PLAY
+            {t.play}
           </button>
         </div>
       </header>
@@ -270,33 +275,33 @@ export default function App() {
       {loading && (
         <div className="boot">
           <Stander cycle className="bootMascot" alt="" />
-          <span>SYNCING ENGINE</span>
+          <span>{t.boot}</span>
         </div>
       )}
 
-      {err && <div className="error">{err}</div>}
+      {err && <div className="error">{t.feedErr}</div>}
 
       {!loading && !err && (
         <div className="workspace" ref={shotRef}>
           <div className="stampBar">
             <img className="stampLogo" src={LOGO} alt="" />
             <span>STANDX CIRCUIT</span>
-            <span>{mode === "raid" ? (raidOn ? "RAID LIVE" : "PLAY") : selected || "ENGINE"}</span>
-            <span>DUSD CORE · LIVE · NOT INVESTMENT ADVICE</span>
+            <span>{mode === "raid" ? (raidOn ? "RAID LIVE" : t.play) : selected || "ENGINE"}</span>
+            <span>{t.disclaimer}</span>
           </div>
           <div className="stageCol">
             <div className="coreStats">
               <div>
-                <span>24H VOLUME</span>
+                <span>{t.vol24}</span>
                 <b>{money(summary?.volume_quote_24h)}</b>
               </div>
               <div>
-                <span>OPEN INTEREST</span>
+                <span>{t.oi}</span>
                 <b>{money(summary?.open_interest_notional)}</b>
               </div>
               <div>
                 <span>STANDER · DUSD</span>
-                <b className="soft">yield-bearing margin</b>
+                <b className="soft">{t.dusdSoft}</b>
               </div>
             </div>
             <div className="stage arenaStage" ref={stageRef}>
@@ -325,16 +330,14 @@ export default function App() {
                       setRaidOn(true);
                     }}
                   >
-                    START RAID
+                    {t.startRaid}
                   </button>
                 </div>
               )}
               <div className="stageQuestMount" ref={setHudEl} />
             </div>
             <p className="keys">
-              {mode === "raid"
-                ? "Drag: orbit camera · TRUE / FALSE or SIP chips · C = core"
-                : "Drag: orbit camera · click: select a market"}
+              {mode === "raid" ? t.keysRaid : t.keysWatch}
             </p>
           </div>
 
@@ -357,7 +360,7 @@ export default function App() {
           <aside className="inspector">
             <div className="inspectHead">
               <div>
-                <span className="kicker">LIVE MODULE</span>
+                <span className="kicker">{t.liveModule}</span>
                 <h2>{market?.symbol || "—"}</h2>
               </div>
               <Stander pose="focus" className="inspectMascot" alt="Stander" />
@@ -369,23 +372,23 @@ export default function App() {
             <Spark bars={bars} />
             <dl>
               <div>
-                <dt>Open interest</dt>
+                <dt>{t.dtOi}</dt>
                 <dd>{money(market?.open_interest_notional)}</dd>
               </div>
               <div>
-                <dt>24h volume</dt>
+                <dt>{t.dtVol}</dt>
                 <dd>{money(market?.volume_quote_24h)}</dd>
               </div>
               <div>
-                <dt>Funding</dt>
+                <dt>{t.dtFund}</dt>
                 <dd>{funding(market?.funding_rate)}</dd>
               </div>
               <div>
-                <dt>Spread</dt>
+                <dt>{t.dtSpread}</dt>
                 <dd>{bps(book?.spreadBps)}</dd>
               </div>
               <div>
-                <dt>Book bias</dt>
+                <dt>{t.dtBias}</dt>
                 <dd className={book?.imbalance >= 0 ? "up" : "down"}>
                   {book ? `${book.imbalance >= 0 ? "BID" : "ASK"} ${(Math.abs(book.imbalance) * 100).toFixed(0)}%` : "—"}
                 </dd>
@@ -398,12 +401,12 @@ export default function App() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              TRADE ON STANDX
+              {t.trade}
             </a>
             <button type="button" className="share" onClick={() => { setSharing(true); setTimeout(share, 40); }}>
-              STAMP CIRCUIT PNG
+              {t.stamp}
             </button>
-            <p className="tiny">Figures from StandX public market, depth, and kline. No vault TVL. Not investment advice.</p>
+            <p className="tiny">{t.tiny}</p>
           </aside>
           )}
           </div>
@@ -418,8 +421,8 @@ export default function App() {
       <Anatomy open={sip} onOpen={setSip} />
       <footer>
         <Stander pose="three" className="footMascot" alt="" />
-        StandX Circuit · {mode === "raid" ? "raid on the live ring" : "DUSD core · protocol map, not a vault explorer"} · not investment advice
-        {sharing ? " · rendering stamp…" : ""}
+        StandX Circuit · {mode === "raid" ? t.footerRaid : t.footerWatch} · {t.noAdvice}
+        {sharing ? ` · ${t.stampWait}` : ""}
       </footer>
     </div>
   );

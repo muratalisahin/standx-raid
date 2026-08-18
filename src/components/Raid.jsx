@@ -5,10 +5,13 @@ import Stander, { LOGO, standerPose } from "./Stander.jsx";
 import { BEST_KEY } from "../lib/board.js";
 import { submitScore } from "../lib/session.js";
 import { ROUND_SIZE, advanceBoss, makeIntercept, newDeck, rankFor, resolveHit } from "../lib/intercepts.js";
+import { sipText } from "../lib/i18n.js";
+import { useLang } from "../lib/Lang.jsx";
 const QUESTION_POINTS = 10;
 const LIVES = 2;
 
 export default function Raid({ overview, book, selected, onSip, sip, running, setRunning, hitRef, viewRef, hudEl, onScore }) {
+  const { t } = useLang();
   const [wave, setWave] = useState(0);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -209,11 +212,11 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
   }, [running]);
 
   const radio = useMemo(() => {
-    if (over) return `Run over. Rank ${rank.id}. Try again.`;
-    if (!running) return `15 questions from a 100-item pool. TRUE / FALSE, or pick what each SIP is about.`;
+    if (over) return t.raidOver(rank.id);
+    if (!running) return t.raidIdle;
     if (flash) return flash;
-    return intercept?.hint || "Answer in the question card.";
-  }, [over, running, flash, intercept, rank.id]);
+    return intercept?.hint || t.raidHint;
+  }, [over, running, flash, intercept, rank.id, t]);
 
   const modeNow = active?.mode || intercept?.mode;
   const questCard = (running && intercept) || over ? (
@@ -221,11 +224,11 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
       {over ? (
         <>
           <div className="questTop">
-            <b>DONE · {rank.id}</b>
-            <em>{score} pts</em>
+            <b>{t.done} · {rank.id}</b>
+            <em>{score} {t.pts}</em>
           </div>
           <p>{rank.line}</p>
-          <button type="button" className="hudPlay" onClick={start}>PLAY AGAIN</button>
+          <button type="button" className="hudPlay" onClick={start}>{t.playAgain}</button>
         </>
       ) : (
         <>
@@ -240,8 +243,8 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
           <small>{intercept.hint}</small>
           {modeNow === "tap-side" && (
             <div className="questBtns">
-              <button type="button" className="bid" onClick={() => attempt({ side: "BID" })}>BID</button>
-              <button type="button" className="ask" onClick={() => attempt({ side: "ASK" })}>ASK</button>
+              <button type="button" className="bid" onClick={() => attempt({ side: "BID" })}>{t.bid}</button>
+              <button type="button" className="ask" onClick={() => attempt({ side: "ASK" })}>{t.askHeavy}</button>
             </div>
           )}
           {modeNow === "tap-sip" && sipOptions && (
@@ -249,23 +252,23 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
               {sipOptions.map((s) => (
                 <button key={s.id} type="button" onClick={() => attempt({ sip: s.id })}>
                   {s.id}
-                  <small>{s.name}</small>
+                  <small>{sipText(t, s.id).name}</small>
                 </button>
               ))}
             </div>
           )}
           {modeNow === "truth" && (
             <div className="questBtns">
-              <button type="button" className="ok" onClick={() => attempt({ kind: "core" })}>TRUE</button>
-              <button type="button" className="ask" onClick={() => attempt({ kind: "mod", symbol: selected || "BTC-USD" })}>FALSE</button>
+              <button type="button" className="ok" onClick={() => attempt({ kind: "core" })}>{t.truth}</button>
+              <button type="button" className="ask" onClick={() => attempt({ kind: "mod", symbol: selected || "BTC-USD" })}>{t.falsy}</button>
             </div>
           )}
           {(modeNow === "tap-core") && (
             <div className="questBtns">
-              <button type="button" className="ok" onClick={() => attempt({ kind: "core" })}>STANDER / CORE</button>
+              <button type="button" className="ok" onClick={() => attempt({ kind: "core" })}>{t.core}</button>
             </div>
           )}
-          {modeNow === "tap-mod" && <small className="questHint">Answer: tap a market on the 3D ring.</small>}
+          {modeNow === "tap-mod" && <small className="questHint">{t.keysWatch}</small>}
         </>
       )}
     </div>
@@ -278,22 +281,22 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
       <div className="inspectHead">
         <div>
           <span className="kicker">STANDX RAID</span>
-          <h2>{running ? `${wave} / ${ROUND_SIZE}` : "START"}</h2>
+          <h2>{running ? `${wave} / ${ROUND_SIZE}` : t.start}</h2>
         </div>
         <Stander pose={pose} className="inspectMascot" alt="" />
       </div>
 
       <div className="raidMeters">
         <div>
-          <span>SCORE</span>
+          <span>{t.score}</span>
           <b>{score}</b>
         </div>
         <div>
-          <span>COMBO</span>
+          <span>{t.combo}</span>
           <b>{combo}×</b>
         </div>
         <div>
-          <span>LIVES</span>
+          <span>{t.lives}</span>
           <b className={margin <= 1 ? "down" : ""}>
             {"●".repeat(Math.max(0, margin))}
             {"○".repeat(Math.max(0, LIVES - margin))}
@@ -313,12 +316,11 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
             <Stander cycle className="raidHero" alt="" />
           </div>
           <p>
-            1) You are in <em>PLAY</em>. 2) Hit green <em>START</em>.
-            Each run is 15 random questions from a 100-item pool (5 SIP + 10 true/false). For SIP, pick what SIP-1…SIP-5 is about from the chips below.
+            {t.raidIntro}
           </p>
           <p className="tiny">Best {best} · Spark → Maker → Shield → Circuit → Universal</p>
           <button type="button" className="share" onClick={start}>
-            START
+            {t.start}
           </button>
         </div>
       )}
@@ -341,10 +343,10 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
               <DepthXray book={book} symbol={selected} />
               <div className="raidSides">
               <button type="button" className="bid" onClick={() => attempt({ side: "BID" })}>
-                BID HEAVY
+                {t.bid}
               </button>
               <button type="button" className="ask" onClick={() => attempt({ side: "ASK" })}>
-                ASK HEAVY
+                {t.askHeavy}
               </button>
               </div>
             </>
@@ -355,7 +357,7 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
               {sipOptions.map((s) => (
                 <button key={s.id} type="button" onClick={() => attempt({ sip: s.id })}>
                   {s.id}
-                  <small>{s.name}</small>
+                  <small>{sipText(t, s.id).name}</small>
                 </button>
               ))}
             </div>
@@ -363,7 +365,7 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
 
           {(active?.mode === "truth" || intercept.mode === "truth" || active?.mode === "tap-core" || intercept.mode === "tap-core") && (
             <button type="button" className="share" onClick={() => attempt({ kind: "core" })}>
-              TAP DUSD CORE
+              {t.tapCore}
             </button>
           )}
         </>
@@ -377,12 +379,12 @@ export default function Raid({ overview, book, selected, onSip, sip, running, se
             Score {score} · best {Math.max(best, score)} · last wave {wave}
           </p>
           <button type="button" className="share" onClick={start}>
-            PLAY AGAIN
+            {t.playAgain}
           </button>
         </div>
       )}
 
-      <p className="tiny">Answer in the question card. Not investment advice.</p>
+      <p className="tiny">{t.raidTiny}</p>
     </aside>
     </>
   );
