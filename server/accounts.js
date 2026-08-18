@@ -45,17 +45,27 @@ function redis() {
 }
 
 function empty() {
-  return { users: [], sessions: {}, runs: [] };
+  return { users: [], sessions: {}, runs: [], best: {} };
 }
 
 function parseDb(raw) {
   if (!raw) return empty();
   const data = typeof raw === "string" ? JSON.parse(raw) : raw;
-  return {
+  const db = {
     users: Array.isArray(data.users) ? data.users : [],
     sessions: data.sessions && typeof data.sessions === "object" ? data.sessions : {},
     runs: Array.isArray(data.runs) ? data.runs : [],
+    best: data.best && typeof data.best === "object" ? data.best : {},
   };
+  // Older stores kept only a run list. Rebuild each player's best from it.
+  for (const run of db.runs) {
+    if (!run?.userId) continue;
+    const prev = db.best[run.userId];
+    if (!prev || run.score > prev.score) {
+      db.best[run.userId] = { score: run.score, at: run.at, name: run.name };
+    }
+  }
+  return db;
 }
 
 function sbHeaders(key) {
@@ -67,39 +77,53 @@ function sbHeaders(key) {
   return headers;
 }
 
+/**
+ * Never answer with an empty database when the store is only unreachable:
+ * a later save would write that emptiness over everyone's scores.
+ */
 async function load() {
   const sb = supabase();
   if (sb) {
-    try {
-      const r = await fetch(
-        `${sb.url}/rest/v1/standx_store?id=eq.${encodeURIComponent(STORE_ID)}&select=data`,
-        { headers: sbHeaders(sb.key) }
-      );
-      const rows = await r.json();
-      if (Array.isArray(rows) && rows[0]?.data) return parseDb(rows[0].data);
-      return empty();
-    } catch {
-      return empty();
-    }
+    const r = await fetch(
+      `${sb.url}/rest/v1/standx_store?id=eq.${encodeURIComponent(STORE_ID)}&select=data`,
+      { headers: sbHeaders(sb.key) }
+    );
+    if (!r.ok) throw new Error("Score store is unreachable.");
+    const rows = await r.json();
+    if (Array.isArray(rows) && rows[0]?.data) return parseDb(rows[0].data);
+    return empty();
   }
   const kv = redis();
   if (kv) {
+    const r = await fetch(`${kv.url}/get/${encodeURIComponent(REDIS_KEY)}`, {
+      headers: { Authorization: `Bearer ${kv.token}` },
+    });
+    if (!r.ok) throw new Error("Score store is unreachable.");
+    const j = await r.json();
+    return parseDb(j.result);
+  }
+  if (process.env.VERCEL) {
+    throw new Error("Score store is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+  }
+  if (!existsSync(file)) return empty();
+  return parseDb(readFileSync(file, "utf8"));
+}
+
+/** Re-read, re-apply, then write, so two players finishing at once do not erase each other. */
+async function mutate(apply) {
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const db = await load();
+    const out = apply(db);
+    if (out?.error) return out;
     try {
-      const r = await fetch(`${kv.url}/get/${encodeURIComponent(REDIS_KEY)}`, {
-        headers: { Authorization: `Bearer ${kv.token}` },
-      });
-      const j = await r.json();
-      return parseDb(j.result);
-    } catch {
-      return empty();
+      await save(db);
+      return out;
+    } catch (err) {
+      lastErr = err;
     }
   }
-  try {
-    if (!existsSync(file)) return empty();
-    return parseDb(readFileSync(file, "utf8"));
-  } catch {
-    return empty();
-  }
+  throw lastErr || new Error("Could not save.");
 }
 
 async function save(db) {
@@ -191,10 +215,9 @@ function userByToken(db, token) {
   return db.users.find((u) => u.id === sid.userId) || null;
 }
 
-async function issueSession(db, user) {
+function issueSession(db, user) {
   const token = randomBytes(24).toString("hex");
   db.sessions[token] = { userId: user.id, exp: Date.now() + WEEK * 1000 };
-  await save(db);
   return token;
 }
 
@@ -206,68 +229,67 @@ export async function register({ name, email, password, password2 }) {
   if (!validEmail(e)) return { error: "Enter a valid email.", status: 400 };
   if (p.length < 6) return { error: "Password must be at least 6 characters.", status: 400 };
   if (password2 != null && p !== String(password2)) return { error: "Passwords do not match.", status: 400 };
-  const db = await load();
-  if (db.users.some((u) => u.name.toLowerCase() === n.toLowerCase())) {
-    return { error: "That username is taken.", status: 409 };
-  }
-  if (db.users.some((u) => (u.email || "").toLowerCase() === e)) {
-    return { error: "That email is already registered. Sign in.", status: 409 };
-  }
-  const salt = randomBytes(16).toString("hex");
-  const user = {
-    id: randomBytes(8).toString("hex"),
-    name: n,
-    email: e,
-    salt,
-    hash: hashPass(p, salt),
-    created: Date.now(),
-  };
-  db.users.push(user);
-  const token = await issueSession(db, user);
-  user.lastLogin = Date.now();
-  await save(db);
-  return { token, user: publicUser(user) };
+  return mutate((db) => {
+    if (db.users.some((u) => u.name.toLowerCase() === n.toLowerCase())) {
+      return { error: "That username is taken.", status: 409 };
+    }
+    if (db.users.some((u) => (u.email || "").toLowerCase() === e)) {
+      return { error: "That email is already registered. Sign in.", status: 409 };
+    }
+    const salt = randomBytes(16).toString("hex");
+    const user = {
+      id: randomBytes(8).toString("hex"),
+      name: n,
+      email: e,
+      salt,
+      hash: hashPass(p, salt),
+      created: Date.now(),
+      lastLogin: Date.now(),
+    };
+    db.users.push(user);
+    return { token: issueSession(db, user), user: publicUser(user) };
+  });
 }
 
 export async function login({ email, name, password }) {
   const e = cleanEmail(email);
   const n = cleanName(name);
   const p = String(password || "");
-  const db = await load();
-  const user = db.users.find(
-    (u) => (e && u.email === e) || (n && u.name.toLowerCase() === n.toLowerCase())
-  );
-  if (!user) return { error: "X name or password is wrong.", status: 401 };
-  const next = hashPass(p, user.salt);
-  const a = Buffer.from(user.hash, "hex");
-  const b = Buffer.from(next, "hex");
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    return { error: "X name or password is wrong.", status: 401 };
-  }
-  user.lastLogin = Date.now();
-  const token = await issueSession(db, user);
-  return { token, user: publicUser(user) };
+  return mutate((db) => {
+    const user = db.users.find(
+      (u) => (e && u.email === e) || (n && u.name.toLowerCase() === n.toLowerCase())
+    );
+    if (!user) return { error: "X name or password is wrong.", status: 401 };
+    const next = hashPass(p, user.salt);
+    const a = Buffer.from(user.hash, "hex");
+    const b = Buffer.from(next, "hex");
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return { error: "X name or password is wrong.", status: 401 };
+    }
+    user.lastLogin = Date.now();
+    return { token: issueSession(db, user), user: publicUser(user) };
+  });
 }
 
 export async function enterByX(name) {
   const n = cleanName(name);
   if (n.length < 3) return { error: "Enter your X username.", status: 400 };
-  const db = await load();
-  let user = db.users.find((u) => u.name.toLowerCase() === n.toLowerCase());
-  if (!user) {
-    user = {
-      id: randomBytes(8).toString("hex"),
-      name: n,
-      email: "",
-      salt: "",
-      hash: "",
-      created: Date.now(),
-    };
-    db.users.push(user);
-  }
-  user.lastLogin = Date.now();
-  const token = await issueSession(db, user);
-  return { token, user: publicUser(user) };
+  return mutate((db) => {
+    let user = db.users.find((u) => u.name.toLowerCase() === n.toLowerCase());
+    if (!user) {
+      user = {
+        id: randomBytes(8).toString("hex"),
+        name: n,
+        email: "",
+        salt: "",
+        hash: "",
+        created: Date.now(),
+      };
+      db.users.push(user);
+    }
+    user.lastLogin = Date.now();
+    return { token: issueSession(db, user), user: publicUser(user) };
+  });
 }
 
 export async function me(token) {
@@ -278,47 +300,46 @@ export async function me(token) {
 }
 
 export async function logoutSession(token) {
-  const db = await load();
-  if (token && db.sessions[token]) {
+  if (!token) return { ok: true };
+  return mutate((db) => {
     delete db.sessions[token];
-    await save(db);
-  }
-  return { ok: true };
+    return { ok: true };
+  });
 }
 
 export async function addScore(token, score) {
-  const db = await load();
-  const user = userByToken(db, token);
-  if (!user) return { error: "Sign in required.", status: 401 };
   const n = Number(score) || 0;
   if (n < 0 || n > 100000) return { error: "Invalid score.", status: 400 };
-  db.runs.push({ userId: user.id, name: user.name, score: n, at: Date.now() });
-  db.runs.sort((a, b) => b.score - a.score || b.at - a.at);
-  db.runs = db.runs.slice(0, 100);
-  await save(db);
-  return { ok: true, board: boardFrom(db) };
+  return mutate((db) => {
+    const user = userByToken(db, token);
+    if (!user) return { error: "Sign in required.", status: 401 };
+    const at = Date.now();
+    const prev = db.best[user.id];
+    if (!prev || n > prev.score) db.best[user.id] = { score: n, at, name: user.name };
+    db.runs.unshift({ userId: user.id, name: user.name, score: n, at });
+    db.runs = db.runs.slice(0, 50);
+    return { ok: true, board: boardFrom(db) };
+  });
 }
 
 export async function resetScores({ wipeUsers = false } = {}) {
-  const db = await load();
-  const cleared = db.runs.length;
-  const users = wipeUsers ? 0 : db.users.length;
-  if (wipeUsers) {
-    db.users = [];
-    db.sessions = {};
-  }
-  db.runs = [];
-  await save(db);
+  const { cleared, users } = await mutate((db) => {
+    const out = { cleared: db.runs.length, users: wipeUsers ? 0 : db.users.length };
+    if (wipeUsers) {
+      db.users = [];
+      db.sessions = {};
+    }
+    db.runs = [];
+    db.best = {};
+    return out;
+  });
   try {
     if (existsSync(file)) {
-      const local = wipeUsers ? empty() : { ...parseDb(readFileSync(file, "utf8")), runs: [] };
-      if (wipeUsers) {
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(file, JSON.stringify(empty(), null, 2));
-      } else {
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(file, JSON.stringify(local, null, 2));
-      }
+      const local = wipeUsers
+        ? empty()
+        : { ...parseDb(readFileSync(file, "utf8")), runs: [], best: {} };
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(file, JSON.stringify(local, null, 2));
     }
   } catch {
     /* ignore */
@@ -331,13 +352,8 @@ export async function board() {
 }
 
 function boardFrom(db) {
-  const best = new Map();
-  for (const run of db.runs) {
-    const prev = best.get(run.userId);
-    if (!prev || run.score > prev.score) best.set(run.userId, run);
-  }
   const people = (db.users || []).map((u) => {
-    const run = best.get(u.id);
+    const run = db.best?.[u.id];
     return {
       name: u.name,
       score: run?.score || 0,

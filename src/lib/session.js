@@ -36,7 +36,11 @@ async function req(url, opts = {}) {
     headers,
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || "Request failed.");
+  if (!r.ok) {
+    const err = new Error(j.error || "Request failed.");
+    err.status = r.status;
+    throw err;
+  }
   return j;
 }
 
@@ -67,9 +71,18 @@ export async function restoreSession() {
     const j = await req("/api/auth");
     remember(j.user, localStorage.getItem(TOKEN_KEY));
     return j.user;
-  } catch {
-    if (cached) return cached;
-    return null;
+  } catch (err) {
+    // The server forgets sessions when it restarts. Claim the saved name again
+    // so this player keeps their leaderboard row instead of starting over.
+    const name = cached?.name || savedXName();
+    if (err.status === 401 && name) {
+      try {
+        return await enterX(name);
+      } catch {
+        /* offline */
+      }
+    }
+    return cached || null;
   }
 }
 
@@ -78,5 +91,13 @@ export async function fetchBoard() {
 }
 
 export async function submitScore(score) {
-  return req("/api/board", { method: "POST", body: JSON.stringify({ score }) });
+  const post = () => req("/api/board", { method: "POST", body: JSON.stringify({ score }) });
+  try {
+    return await post();
+  } catch (err) {
+    const name = getUser()?.name || savedXName();
+    if (err.status !== 401 || !name) throw err;
+    await enterX(name);
+    return post();
+  }
 }
