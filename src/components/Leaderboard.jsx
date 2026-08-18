@@ -63,7 +63,7 @@ export default function Leaderboard({ user, gameScore = 0, playing = false }) {
           </li>
         ))}
       </ol>
-      <Stander pose="cozy" className="boardMascot" alt="Stander" />
+      <Stander cycle className="boardMascot" alt="Stander" />
       </div>
     </section>
   );

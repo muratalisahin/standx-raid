@@ -188,13 +188,10 @@ header.topHud {
   align-items: stretch;
 }
 .boardMascot {
-  height: 100%;
-  max-height: 118px;
-  width: auto;
+  height: 118px;
+  width: 118px;
   justify-self: center;
   align-self: center;
-  object-fit: contain;
-  filter: drop-shadow(0 4px 12px #31d66d44);
 }
 .boardList {
   list-style: none;
@@ -635,22 +632,36 @@ footer { text-align: center; padding: 8px 4px 4px; color: #b7c4bb; }
   font-size: 28px;
   letter-spacing: -0.04em;
 }
-.inspectMascot {
-  width: 72px;
-  height: 72px;
+.standerLive {
+  display: inline-grid;
+  place-items: center;
+  animation: standerFloat 2.8s ease-in-out infinite;
+}
+.standerLive img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  filter: drop-shadow(0 8px 14px #0007);
+  transition: opacity 0.16s ease, transform 0.28s ease;
+}
+.standerLive.swap img {
+  opacity: 0.2;
+  transform: scale(0.9) rotate(-6deg);
+}
+
+.inspectMascot {
+  width: 88px;
+  height: 88px;
   flex: none;
 }
 .bootMascot {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-  animation: standerFloat 2.2s ease-in-out infinite;
+  width: 128px;
+  height: 128px;
 }
 .footMascot {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
   vertical-align: middle;
   margin-right: 8px;
 }
@@ -798,15 +809,16 @@ dd { margin: 0; font-family: "IBM Plex Mono", monospace; font-size: 12px; }
   gap: 16px;
   margin-bottom: 12px;
 }
-.raidCast img {
-  height: 72px;
-  width: auto;
-  object-fit: contain;
-}
 .raidCast img:first-child {
   height: 56px;
+  width: auto;
+  object-fit: contain;
   border-radius: 10px;
   box-shadow: 0 0 0 1px #ffffff14, 0 8px 18px #0006;
+}
+.raidHero {
+  width: 108px;
+  height: 108px;
 }
 .raidIntro p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: #c5d0c8; }
 .raidIntro em { color: var(--green); font-style: normal; }
@@ -888,13 +900,69 @@ dd { margin: 0; font-family: "IBM Plex Mono", monospace; font-size: 12px; }
   padding: 22px 20px 24px;
   text-align: center;
 }
+.authBrand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  letter-spacing: 0.16em;
+  font-size: 13px;
+  font-weight: 700;
+}
 .authLogo {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   object-fit: cover;
 }
-.authMascot { height: 88px; width: auto; margin: 8px auto; display: block; }
+.helloStage {
+  position: relative;
+  margin: 0 0 12px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.authMascot {
+  width: 92px;
+  height: 92px;
+  margin: 0;
+  display: grid;
+}
+.helloBubble {
+  display: inline-block;
+  margin: 8px auto 0;
+  padding: 8px 14px;
+  border: 1px solid var(--green);
+  background: #102018;
+  color: #8cffb0;
+  font-size: 18px;
+  font-weight: 700;
+  animation: helloPop 0.45s ease;
+}
+@keyframes helloPop {
+  from { transform: translateY(8px) scale(0.92); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.helloGate {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: #070a08ee;
+  pointer-events: none;
+}
+.helloGate p {
+  margin: 8px 0 0;
+  color: var(--green);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.helloGateMascot {
+  width: 200px;
+  height: 200px;
+}
 .authCard h1 { margin: 8px 0 0; font-size: 26px; }
 .authAsk {
   font-size: 22px !important;

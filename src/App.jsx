@@ -9,6 +9,7 @@ import Auth from "./components/Auth.jsx";
 import Raid from "./components/Raid.jsx";
 import Stander, { LOGO } from "./components/Stander.jsx";
 import { logout, restoreSession, getUser } from "./lib/session.js";
+import { speakHello } from "./lib/speak.js";
 import { depthUrl, fetchJson, klineUrl, marketUrl, parseDepth, parseKlines } from "./lib/api.js";
 import { layoutCircuit } from "./lib/circuitLayout.js";
 import { bps, funding, money, pct, px } from "./lib/format.js";
@@ -42,10 +43,19 @@ export default function App() {
   }));
   const [user, setUser] = useState(() => getUser());
   const [authReady, setAuthReady] = useState(false);
+  const [hello, setHello] = useState(false);
+  const fromAuth = useRef(false);
 
   useEffect(() => {
     restoreSession()
-      .then((u) => setUser(u))
+      .then((u) => {
+        setUser(u);
+        if (u && !fromAuth.current) {
+          setHello(true);
+          speakHello();
+          window.setTimeout(() => setHello(false), 3200);
+        }
+      })
       .finally(() => setAuthReady(true));
   }, []);
 
@@ -206,11 +216,24 @@ export default function App() {
   }
 
   if (!user) {
-    return <Auth onIn={setUser} />;
+    return (
+      <Auth
+        onIn={(u) => {
+          fromAuth.current = true;
+          setUser(u);
+        }}
+      />
+    );
   }
 
   return (
     <div className="shell">
+      {hello && (
+        <div className="helloGate" aria-live="polite">
+          <Stander cycle className="helloGateMascot" />
+          <p>Hello, welcome</p>
+        </div>
+      )}
       <header className="topHud">
         <div className="brand">
           <img className="brandLogo" src={LOGO} alt="StandX" />
@@ -246,7 +269,7 @@ export default function App() {
 
       {loading && (
         <div className="boot">
-          <Stander pose="think" className="bootMascot" alt="" />
+          <Stander cycle className="bootMascot" alt="" />
           <span>SYNCING ENGINE</span>
         </div>
       )}
@@ -337,7 +360,7 @@ export default function App() {
                 <span className="kicker">LIVE MODULE</span>
                 <h2>{market?.symbol || "—"}</h2>
               </div>
-              <Stander pose="focus" className="inspectMascot" alt="" />
+              <Stander pose="focus" className="inspectMascot" alt="Stander" />
             </div>
             <div className="markRow">
               <strong>{px(market?.mark_price || market?.last_price)}</strong>
