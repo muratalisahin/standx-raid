@@ -18,6 +18,9 @@ body {
     var(--bg);
   color: var(--ink);
   font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overflow: hidden;
 }
 
 .shell {
@@ -1042,43 +1045,91 @@ footer { text-align: center; padding: 2px 4px 0; font-size: 12px; }
   .shell {
     height: 100dvh;
     overflow: hidden;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: max(6px, env(safe-area-inset-top)) 8px max(6px, env(safe-area-inset-bottom));
     gap: 6px;
   }
-  header { gap: 8px; }
+  header.topHud {
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+  }
   .line { display: none; }
-  .brandLogo { width: 30px; height: 30px; border-radius: 8px; }
-  .live { font-size: 9px; width: auto; justify-self: end; }
+  .live { display: none; }
+  .brand { font-size: 12px; letter-spacing: 0.12em; }
+  .brandLogo { width: 28px; height: 28px; border-radius: 8px; }
+  .userBar { justify-self: end; gap: 6px; }
+  .userBar b { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .userBar button { min-height: 36px; padding: 6px 8px; font-size: 12px; }
+  .modeSwitch button { min-height: 44px; padding: 10px 8px; font-size: 13px; letter-spacing: 0.08em; }
+  .hudLang button { min-height: 36px; font-size: 11px; }
+
   .workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr) 168px;
+    grid-template-rows: minmax(0, 1fr) 92px;
     overflow: hidden;
-    padding: 6px;
+    padding: 4px;
+    gap: 6px;
   }
-  .stampBar { font-size: 8px; letter-spacing: 0.08em; }
+  .stampBar { display: none; }
+  .coreStats { display: none; }
+  .keys { display: none; }
   .sideCol {
-    display: flex;
-    grid-row: 2;
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip: rect(0 0 0 0);
   }
-  .stageCol { grid-row: 2; }
-  .board { grid-row: 3; height: 168px; min-height: 168px; max-height: 168px; }
+  .stageCol {
+    grid-row: 1;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .board {
+    grid-row: 2;
+    height: 92px;
+    min-height: 92px;
+    max-height: 92px;
+    padding: 6px 8px;
+  }
+  .boardHead strong { font-size: 14px; }
+  .boardHead span { font-size: 12px; }
+  .boardMascot { display: none; }
+  .boardBody { grid-template-columns: 1fr; }
+  .boardList button, .boardList .run { min-height: 40px; padding: 6px 8px; }
   .stage.arenaStage {
     max-width: 100%;
     height: 100%;
-    min-height: 0;
+    min-height: 180px;
   }
-  .questBtns.sip { grid-template-columns: 1fr; }
-  .coreStats { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-  .coreStats div { padding: 8px 8px; }
-  .coreStats b { font-size: 13px; }
-  .coreStats .soft { font-size: 10px; }
-  .keys { display: block; font-size: 13px; }
+  .stageHud {
+    left: 10px;
+    right: 10px;
+    bottom: 12px;
+  }
+  .hudPlay {
+    width: 100%;
+    min-height: 52px;
+    font-size: 18px;
+  }
+  .stageQuestMount {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    max-height: 46%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .questCard {
+    padding: 10px 12px 12px;
+  }
+  .questCard p { font-size: 16px; margin-top: 8px; }
+  .questCard small { font-size: 13px; }
+  .questTop em { font-size: 16px; }
+  .questBtns { gap: 8px; }
+  .questBtns button { min-height: 48px; font-size: 15px; }
+  .questBtns.sip { grid-template-columns: 1fr 1fr; }
   .inspector { padding: 12px; }
   .inspector h2 { font-size: 22px; }
   .sipRow { grid-template-columns: 1fr 1fr; }
@@ -1087,9 +1138,24 @@ footer { text-align: center; padding: 2px 4px 0; font-size: 12px; }
   .sipBody > div + div { margin-top: 10px; }
   .xrayPlot { height: 112px; }
   .trade, .share { height: 44px; }
+
+  .anatomy,
+  footer { display: none; }
+
+  .authShell {
+    padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+    overflow: auto;
+    align-content: start;
+    place-items: start center;
+  }
+  .authCard { padding: 16px 14px 18px; }
+  .authMascot { width: 72px; height: 72px; }
+  .helloGateMascot { width: 140px; height: 140px; }
+  .helloGate p { font-size: 22px; }
 }
 
 @media (max-width: 420px) {
-  .coreStats { grid-template-columns: 1fr; }
   .sipRow { grid-template-columns: 1fr; }
+  .board { height: 84px; min-height: 84px; max-height: 84px; }
+  .workspace { grid-template-rows: minmax(0, 1fr) 84px; }
 }

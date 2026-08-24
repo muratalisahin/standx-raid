@@ -231,7 +231,7 @@ export default function App() {
   }
 
   return (
-    <div className="shell">
+    <div className={`shell ${mode === "raid" ? "raidMode" : ""}`}>
       {hello && (
         <div className="helloGate" aria-live="polite">
           <Stander cycle className="helloGateMascot" />

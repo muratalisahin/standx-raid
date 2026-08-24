@@ -59,7 +59,7 @@ export default function Arena3D({ layout, selected, onSelect, ticks, sip, raid, 
     camera.position.set(0, 9.2, 16.5);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setPixelRatio(Math.min(window.innerWidth < 860 ? 1.25 : 2, window.devicePixelRatio || 1));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.12;
@@ -316,6 +316,10 @@ export default function Arena3D({ layout, selected, onSelect, ticks, sip, raid, 
       const p = propsRef.current;
       const view = p.raidView?.current || {};
       controls.autoRotateSpeed = p.raid && view.running ? 1.15 : 0.45;
+      const phone = window.matchMedia("(max-width: 860px)").matches;
+      controls.enableRotate = !phone;
+      controls.enableZoom = !phone;
+      controls.autoRotate = !(phone && p.raid && view.running);
 
       const sel = p.selected;
       for (const [sym, rec] of bySym) {
